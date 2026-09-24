@@ -10,7 +10,7 @@ pipeline {
 
     environment {
         // Defines the app name or version if needed
-        APP_NAME = 'demo8888'
+        APP_NAME = 'demo555'
     }
 
     stages {

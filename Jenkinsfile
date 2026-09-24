@@ -1,70 +1,55 @@
 pipeline {
     agent any
 
-    tools {
-        // Ensure 'Maven' and 'JDK' match the tool names configured in:
-        // Manage Jenkins -> Tools (or Global Tool Configuration)
-        maven 'Maven 3'
-        jdk 'JDK 21'
-    }
-
-    environment {
-        // Defines the app name or version if needed
-        APP_NAME = 'demo555'
-    }
-
     stages {
-        stage('Clean & Workspace Check') {
+        stage('Checkout') {
             steps {
-                echo 'Cleaning up previous build workspace...'
-                sh 'mvn clean'
+                checkout scm
+            }
+        }
+
+        stage('Verify Software') {
+            steps {
+                bat 'java -version'
+                bat 'mvn -version'
+                bat 'git --version'
             }
         }
 
         stage('Compile') {
             steps {
-                echo 'Compiling Java source code...'
-                sh 'mvn compile'
+                bat 'mvn clean compile'
             }
         }
 
-        stage('Run Tests') {
+        stage('Test') {
             steps {
-                echo 'Executing JUnit tests...'
-                // Allows build to continue gathering reports even if test step fails
-                sh 'mvn test'
-            }
-            post {
-                always {
-                    // Publishes test results in Jenkins UI
-                    junit '**/target/surefire-reports/*.xml'
-                }
+                bat 'mvn test'
             }
         }
 
-        stage('Package Application') {
+        stage('Package') {
             steps {
-                echo 'Building production JAR package...'
-                // -DskipTests speeds up packaging since tests ran in the previous stage
-                sh 'mvn package -DskipTests'
-            }
-        }
-
-        stage('Archive Artifacts') {
-            steps {
-                echo 'Archiving built JAR files...'
-                // Stores generated JAR file in Jenkins for download/deployment
-                archiveArtifacts artifacts: '**/target/*.jar', fingerprint: true
+                bat 'mvn package -DskipTests'
             }
         }
     }
 
     post {
-        success {
-            echo "Pipeline completed successfully for ${env.JOB_NAME} #${env.BUILD_NUMBER}!"
+        always {
+            junit testResults: 'target/surefire-reports/*.xml',
+                  allowEmptyResults: true
         }
+
+        success {
+            archiveArtifacts artifacts: 'target/*.jar',
+                             fingerprint: true
+
+            echo 'Maven project built successfully'
+        }
+
         failure {
-            echo "Pipeline failed. Please check the console logs for errors."
+            echo 'Build failed. Check Console Output.'
         }
     }
 }
